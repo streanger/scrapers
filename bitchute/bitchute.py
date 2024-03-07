@@ -30,7 +30,7 @@ def parse_bitchute(text):
     for index, row in enumerate(rows, start=1):
         title = row.find('div', {'class': 'channel-videos-title'}).text.strip()
         duration = row.find('span', {'class', 'video-duration'}).text
-        uploaded = row.find('div', {'class', 'channel-videos-details'}).span.text
+        uploaded = row.find('div', {'class', 'channel-videos-details'}).text.strip()
         parsed = Row(uploaded=uploaded, duration=duration, title=title)
         parsed_rows.append(parsed)
     return parsed_rows
@@ -44,7 +44,7 @@ def parse_bitchute_extend(text):
     for index, row in enumerate(rows, start=1):
         title = row.find('div', {'class': 'channel-videos-title'}).text.strip()
         duration = row.find('span', {'class', 'video-duration'}).text
-        uploaded = row.find('div', {'class', 'channel-videos-details'}).span.text
+        uploaded = row.find('div', {'class', 'channel-videos-details'}).text.strip()
         parsed = Row(uploaded=uploaded, duration=duration, title=title)
         parsed_rows.append(parsed)
     return parsed_rows
