@@ -1,55 +1,48 @@
 import os
 from itertools import count
-from typing import NamedTuple
 from pathlib import Path
-import requests
+from typing import NamedTuple
+
 import pandas as pd
-from rich import print
+import requests
 from bs4 import BeautifulSoup as bs
+from rich import print
 
 
 class Row(NamedTuple):
     uploaded: str
     duration: str
     title: str
-    
-    
+    url: str
+
+
 def script_path():
     """set current path, to script path"""
     current_path = str(Path(__file__).parent)
     os.chdir(current_path)
     return current_path
-    
-    
-def parse_bitchute(text):
-    """parse single response website"""
+
+
+def parse_bitchute(text, init=False):
+    """parse single response website
+    init - use for first attempt
+    """
     soup = bs(text, 'lxml')
-    table = soup.find('div', {'class': 'channel-videos-list'})
-    rows = table.find_all('div', {'class': 'channel-videos-container'})
-    parsed_rows = []
-    for index, row in enumerate(rows, start=1):
-        title = row.find('div', {'class': 'channel-videos-title'}).text.strip()
-        duration = row.find('span', {'class', 'video-duration'}).text
-        uploaded = row.find('div', {'class', 'channel-videos-details'}).text.strip()
-        parsed = Row(uploaded=uploaded, duration=duration, title=title)
-        parsed_rows.append(parsed)
-    return parsed_rows
-    
-    
-def parse_bitchute_extend(text):
-    """parse extended response"""
-    soup = bs(text, 'lxml')
+    if init:
+        soup = soup.find('div', {'class': 'channel-videos-list'})
     rows = soup.find_all('div', {'class': 'channel-videos-container'})
     parsed_rows = []
     for index, row in enumerate(rows, start=1):
         title = row.find('div', {'class': 'channel-videos-title'}).text.strip()
         duration = row.find('span', {'class', 'video-duration'}).text
         uploaded = row.find('div', {'class', 'channel-videos-details'}).text.strip()
-        parsed = Row(uploaded=uploaded, duration=duration, title=title)
+        video_url = row.find('a', {'class': 'spa'})['href']
+        video_url = f'{BASE_URL}{video_url}'
+        parsed = Row(uploaded=uploaded, duration=duration, title=title, url=video_url)
         parsed_rows.append(parsed)
     return parsed_rows
-    
-    
+
+
 def prepare_data_and_headers(session, offset=25):
     """prepare data and headers for extended post request
     jump every 25 items
@@ -87,6 +80,7 @@ def prepare_data_and_headers(session, offset=25):
 
 script_path()
 CHANNEL = 'bluewater'
+BASE_URL = 'https://www.bitchute.com'
 
 # ***** init page *****
 input('go ')
@@ -94,27 +88,27 @@ rows_container = []
 with requests.Session() as session:
     url = f'https://www.bitchute.com/channel/{CHANNEL}/'
     response = session.get(url)
-    parsed_rows = parse_bitchute(response.text)
+    parsed_rows = parse_bitchute(response.text, init=True)
     rows_container.extend(parsed_rows)
     print()
     for index, row in enumerate(parsed_rows, start=1):
-        print(f'{index:>2}) {row.uploaded} -> {row.duration:>7} -> {row.title}')
-        
+        print(f'{index:>2}) {row.uploaded} | {row.duration:>7} | {row.url} | {row.title}')
+
     # ***** next pages *****
     for offset in count(25, 25):
         extend_url = f'https://www.bitchute.com/channel/{CHANNEL}/extend/'
         data, headers = prepare_data_and_headers(session, offset=offset)
         response = session.post(extend_url, headers=headers, data=data)
         text = response.json()['html']
-        parsed_rows = parse_bitchute_extend(text)
+        parsed_rows = parse_bitchute(text)
         rows_container.extend(parsed_rows)
         if not parsed_rows:
             print('end reached...')
             break
         print()
         for index, row in enumerate(parsed_rows, start=1):
-            print(f'{index:>2}) {row.uploaded} -> {row.duration:>7} -> {row.title}')
-            
+            print(f'{index:>2}) {row.uploaded} | {row.duration:>7} | {row.url} | {row.title}')
+
 # ***** save collected data *****
 df = pd.DataFrame(rows_container)
 df.index += 1
