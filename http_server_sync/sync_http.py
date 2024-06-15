@@ -25,8 +25,13 @@ class RemoteFile:
 
 
 def walk(url):
-    """walk http files server"""
+    """walk http files server
+    INFO: url should endswith /
+    """
     response = requests.get(url)
+    if response.status_code == 404:
+        print(f'[red][!] url not found: {url}[/red]')
+        return []
     soup = bs(response.text, "lxml")
     ul = soup.ul
     if ul is None:
@@ -44,12 +49,19 @@ def walk(url):
 
 
 if __name__ == "__main__":
+    # **** input url ****
     args = sys.argv[1:]
     if not args:
         print('usage:\n    python sync_http.py <http-server-url>')
         sys.exit()
     url = args[0]
+    if not url.endswith('/'):
+        url += '/'
+        print(f'[*] url corrected to: {url}')
+
+    # **** sync remote files ****
     remote_files = walk(url)
+    files_number = len(remote_files)
     for index, remote in enumerate(remote_files, start=1):
-        print(f'{index}) {remote}')
+        print(f'{index}/{files_number}) {remote}')
         remote.save()
