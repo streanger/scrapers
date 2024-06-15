@@ -5,29 +5,6 @@ from bs4 import BeautifulSoup as bs
 from rich import print
 
 
-class Tree:
-    pass
-    # TODO: should produce nodes
-
-
-class Node:
-    def __init__(self, url):
-        self.url = url
-        # self.name = ''
-        if self.url.endswith('/'):
-            self.is_dir = True
-            self.is_file = False
-        else:
-            self.is_dir = False
-            self.is_file = True
-
-    def iter(self):
-        pass
-
-    def __repr__(self):
-        return f'Node(url={self.url})'
-
-
 class RemoteFile:
     def __init__(self, url):
         self.url = url
@@ -57,13 +34,11 @@ def walk(url):
     items = [(url + item.text) for item in ul.find_all('li')]
     remote_files = []
     for item in items:
-        # TODO: item as remote here?
         if item.endswith('/'):
             children = walk(item)
             remote_files.extend(children)
         else:
             remote = RemoteFile(item)
-            # print(remote)
             remote_files.append(remote)
     return remote_files
 
